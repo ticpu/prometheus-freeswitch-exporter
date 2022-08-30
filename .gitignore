@@ -1,5 +1,7 @@
 build/
 dist/
 pkg/
+*.deb
 *.pyc
 *.egg-info
+*.tar.*

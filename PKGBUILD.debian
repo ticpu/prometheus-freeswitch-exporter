@@ -1,0 +1,39 @@
+# Maintainer: Jérôme Poulin <jerome.poulin@cauca.ca>
+pkgname=prometheus-freeswitch-exporter
+pkgver=1.0.1
+pkgrel=4
+epoch=
+pkgdesc="Exposes information gathered from FreeSWITCH for use by the Prometheus monitoring system."
+arch=('any')
+url="https://github.com/znerol/prometheus-freeswitch-exporter"
+license=('Apache2')
+groups=()
+depends=(python3 python3-prometheus-client python3-asgiref python3-yaml python3-werkzeug)
+makedepends=(python-build python-installer python-wheel)
+checkdepends=()
+optdepends=()
+provides=()
+conflicts=()
+replaces=()
+backup=('/etc/prometheus-freeswitch-exporter.yaml')
+options=()
+install=
+changelog=
+noextract=()
+_name=${pkgname#python-}
+
+build() {
+    cd "$srcdir/../"
+    python -m build --wheel --no-isolation
+}
+
+package() {
+    cd "$srcdir/../"
+    python -m installer --destdir="$pkgdir" dist/*.whl
+	install -D -m 0644 "$srcdir/freeswitch-exporter.service" "$pkgdir/lib/systemd/system/freeswitch-exporter.service"
+	install -D -m 0644 esl.yml "$pkgdir/etc/prometheus-freeswitch-exporter.yaml"
+	sed -i -e "s;default='esl.yml';default='/etc/prometheus-freeswitch-exporter.yaml';" `find $pkgdir -name cli.py`
+	sed -i -e 's;/usr/bin/python$;/usr/bin/python3;' $pkgdir/usr/bin/freeswitch_exporter
+	mkdir -p "$pkgdir/usr/lib/python3"
+	mv "$pkgdir/usr/lib/python3.10/site-packages" "$pkgdir/usr/lib/python3/dist-packages"
+}
