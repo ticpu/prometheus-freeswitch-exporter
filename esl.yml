@@ -1,3 +1,4 @@
 default:
   password: ClueCon
   port: 8021
+  allow_remote_targets: false

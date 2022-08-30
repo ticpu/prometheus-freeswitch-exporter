@@ -51,6 +51,9 @@ class FreeswitchExporterApplication():
         """
 
         if module in self._config:
+            if self._config[module]['allow_remote_targets'] is not True:
+                target = 'localhost'
+
             start = time.time()
             output = collect_esl(self._config[module], target)
             response = Response(output)
