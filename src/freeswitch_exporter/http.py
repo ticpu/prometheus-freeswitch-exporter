@@ -2,6 +2,7 @@
 HTTP API for FreeSWITCH prometheus collector.
 """
 
+import asyncio
 import logging
 import time
 import yaml
@@ -15,7 +16,7 @@ from werkzeug.wrappers import Request, Response
 from freeswitch_exporter.collector import collect_esl
 
 
-class FreeswitchExporterApplication():
+class FreeswitchExporterApplication:
     """
     FreeSWITCH prometheus collector HTTP handler.
     """
@@ -26,6 +27,8 @@ class FreeswitchExporterApplication():
         self._config = config
         self._duration = duration
         self._errors = errors
+        self._loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self._loop)
 
         self._log = logging.getLogger(__name__)
 
@@ -45,53 +48,37 @@ class FreeswitchExporterApplication():
             'esl': self.on_esl,
         }
 
-    def on_esl(self, module='default', target='localhost'):
+    def on_esl(self, environ, start_response):
         """
         Request handler for /esl route
         """
+        start = time.time()
+        response = collect_esl({}, 'localhost')
+        start_response("200 OK", [('content-type', CONTENT_TYPE_LATEST)])
+        yield response
 
-        if module in self._config:
-            if self._config[module]['allow_remote_targets'] is not True:
-                target = 'localhost'
-
-            start = time.time()
-            output = collect_esl(self._config[module], target)
-            response = Response(output)
-            response.headers['content-type'] = CONTENT_TYPE_LATEST
-            self._duration.labels(module).observe(time.time() - start)
-        else:
-            response = Response(f"Module '{module}' not found in config")
-            response.status_code = 400
-
-        return response
-
-    def on_metrics(self):
+    def on_metrics(self, environ, start_response):
         """
         Request handler for /metrics route
         """
 
-        response = Response(generate_latest())
-        response.headers['content-type'] = CONTENT_TYPE_LATEST
+        start_response("200 OK", [('content-type', CONTENT_TYPE_LATEST)])
+        response = generate_latest()
+        yield response
 
-        return response
-
-    def on_index(self):
+    def on_index(self, environ, start_response):
         """
         Request handler for index route (/).
         """
 
-        response = Response(
-            """<html>
+        start_response("200 OK", [('content-type', 'text/html')])
+        yield b"""<html>
             <head><title>FreeSWITCH Exporter</title></head>
             <body>
             <h1>FreeSWITCH Exporter</h1>
             <p>Visit <code>/esl?target=1.2.3.4</code> to use.</p>
             </body>
             </html>"""
-        )
-        response.headers['content-type'] = 'text/html'
-
-        return response
 
     def view(self, endpoint, values, args):
         """
@@ -103,12 +90,12 @@ class FreeswitchExporterApplication():
             params.update({key: args[key] for key in self._args[endpoint] if key in args})
 
         try:
+            return self._views[endpoint]
             return self._views[endpoint](**params)
         except Exception as error:  # pylint: disable=broad-except
             self._log.exception("Exception thrown while rendering view")
             self._errors.labels(args.get('module', 'default')).inc()
             raise InternalServerError from error
-
 
     @Request.application
     def __call__(self, request):

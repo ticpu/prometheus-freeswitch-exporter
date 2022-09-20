@@ -3,16 +3,11 @@ Description=Prometheus FreeSwitch exporter
 
 [Service]
 CapabilityBoundingSet=
-RestrictAddressFamilies=AF_INET AF_INET6
 PrivateDevices=true
-RestrictNamespaces=true
-SystemCallArchitectures=native
-SystemCallFilter=@system-service
-SystemCallFilter=~@privileged @resources
 ProtectHome=true
-MemoryDenyWriteExecute=true
-DynamicUser=true
 ExecStart=/usr/bin/freeswitch_exporter
+User=nobody
+Group=nogroup
 
 [Install]
 WantedBy=multi-user.target

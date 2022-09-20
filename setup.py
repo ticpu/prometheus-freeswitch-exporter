@@ -21,7 +21,6 @@ setup(
     },
     test_suite="tests",
     install_requires=[
-        "asgiref",
         "prometheus_client>=0.0.11",
         "pyyaml",
         "requests",

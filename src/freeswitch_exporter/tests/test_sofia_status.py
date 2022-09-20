@@ -97,7 +97,7 @@ class TestSofiaProfiles(TestCase):
 	def test_profile_list_contains_only_profiles(self):
 		for profile in SofiaProfile.profile_list_from_sofia_status(sofia_profiles):
 			if profile.name not in profiles_name:
-				self.fail(f"profile {profile.name} shouldn't be in profiles list")
+				self.fail("profile %s shouldn't be in profiles list" % (profile.name,))
 
 	def test_profile_list_contains_all_profile_names(self):
 		names = set(profiles_name)
@@ -109,7 +109,7 @@ class TestSofiaProfiles(TestCase):
 				break
 
 		if len(names) > 0:
-			self.fail(f"didn't find all profiles in sofia status, missing {names}")
+			self.fail("didn't find all profiles in sofia status, missing %s" % (names,))
 
 
 class TestSofiaProfileStatus(TestCase):
@@ -122,6 +122,6 @@ class TestSofiaProfileStatus(TestCase):
 			field_value_type = type(field_value)
 
 			if field_value_type != field_type:
-				self.fail(f"type for field {field_name} is {field_value_type} instead of {field_type}")
+				self.fail("type for field %s is %s instead of %s" % (field_name,field_value_type,field_type))
 
 

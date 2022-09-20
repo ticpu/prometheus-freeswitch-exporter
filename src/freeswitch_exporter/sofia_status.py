@@ -18,7 +18,7 @@ sofia_profile_status_fields_map = {
 }
 
 
-def split_sofia_status_data(lines: str) -> list[str]:
+def split_sofia_status_data(lines: str):
 	return list(filter(None, [x.strip() for x in lines.split('\t')]))
 
 
@@ -39,16 +39,16 @@ class SofiaProfile(object):
 
 
 class SofiaProfileStatus(object):
-	name: str
-	domain_name: str
-	congestion: int
-	session_to: int
-	max_dialog: int
-	calls_in: int
-	failed_calls_in: int
-	calls_out: int
-	failed_calls_out: int
-	registrations: int
+	# name: str
+	# domain_name: str
+	# congestion: int
+	# session_to: int
+	# max_dialog: int
+	# calls_in: int
+	# failed_calls_in: int
+	# calls_out: int
+	# failed_calls_out: int
+	# registrations: int
 
 	def __init__(self, data: str):
 		profile_name = "(unknown)"

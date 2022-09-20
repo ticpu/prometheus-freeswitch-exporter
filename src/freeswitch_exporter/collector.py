@@ -17,9 +17,7 @@ import asyncio
 import itertools
 import json
 import logging
-from contextlib import asynccontextmanager
 
-from asgiref.sync import async_to_sync
 from prometheus_client import CollectorRegistry, generate_latest
 from prometheus_client.core import GaugeMetricFamily
 
@@ -71,8 +69,8 @@ class ESLProcessInfo:
         if 'sessions' in response:
             for metric in ['total', 'active', 'limit']:
                 process_session_metric = GaugeMetricFamily(
-                    f'freeswitch_session_{metric}',
-                    f'FreeSWITCH {metric} number of sessions',
+                    'freeswitch_session_%s' % (metric,),
+                    'FreeSWITCH %s number of sessions' % (metric,),
                 )
 
                 value = response['sessions'].get('count', {}).get(metric, 0)
@@ -232,8 +230,8 @@ class ESLChannelInfo:
         for row in json.loads(result).get('rows', []):
             uuid = row['uuid']
 
-            await self._esl.send(f'api uuid_set_media_stats {uuid}')
-            (_, result) = await self._esl.send(f'api uuid_dump {uuid} json')
+            await self._esl.send('api uuid_set_media_stats %s' % (uuid,))
+            (_, result) = await self._esl.send('api uuid_dump %s json' % (uuid,))
 
             if result.startswith("-ERR "):
                 self._log.debug(
@@ -340,26 +338,26 @@ class ChannelCollector:
         self._port = port
         self._password = password
 
-    @asynccontextmanager
-    async def _connect(self):
+    def collect(self):  # pylint: disable=missing-docstring
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        return loop.run_until_complete(self._collect())
+
+    async def _collect(self):
         reader, writer = await asyncio.open_connection(self._host, self._port)
         try:
             esl = ESL(reader, writer)
             await esl.initialize()
             await esl.login(self._password)
-            yield esl
-        finally:
-            writer.close()
-            await writer.wait_closed()
 
-    @async_to_sync
-    async def collect(self):  # pylint: disable=missing-docstring
-        async with self._connect() as esl:
             return itertools.chain(
                 await ESLProcessInfo(esl).collect(),
                 await ESLChannelInfo(esl).collect(),
                 await ESLSofiaStatusCollector(esl).collect(),
             )
+
+        finally:
+            writer.close()
 
 
 def collect_esl(config, host):

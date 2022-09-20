@@ -25,7 +25,7 @@ class ESLProtocolError(ESLError):
     """
 
 
-class ESL():
+class ESL:
     """
     Simple FreeSWITCH inbound event socket implementation based on asyncio
     """
@@ -42,13 +42,13 @@ class ESL():
         Initialize an ESL connection, wait for auth/request.
         """
         self._log.debug("Expect auth/request")
-        headers = await self._read_all_headers()
+        headers = await self._read_headers()
         _ = await self._read_body(headers)
         if headers["Content-Type"] == 'auth/request':
             self._log.debug("Received auth/request")
         else:
-            raise ESLProtocolError(f"Expected auth request, "
-                                   f"but got {headers!r}")
+            raise ESLProtocolError("Expected auth response, "
+                                   "but got %s" % (repr(headers),))
 
     async def login(self, password: str) -> bool:
         """
@@ -57,10 +57,10 @@ class ESL():
         result = False
 
         self._log.info("Login: Send password")
-        await self._write(f'auth {password}')
+        await self._write('auth %s' % (password,))
 
         self._log.debug("Expect command/reply")
-        headers = await self._read_all_headers()
+        headers = await self._read_headers()
         body = await self._read_body(headers)
         if headers["Content-Type"] == 'command/reply' \
                 and headers["Reply-Text"] == "+OK accepted":
@@ -69,8 +69,8 @@ class ESL():
         elif headers["Content-Type"] == "text/rude-rejection":
             self._log.error("Received text/rude-rejection: %s", body)
         else:
-            raise ESLProtocolError(f"Expected auth response, "
-                                   f"but got {headers!r}")
+            raise ESLProtocolError("Expected auth response, "
+                                   "but got %s" % (repr(headers),))
 
         self._log.info("Login: %s", "success" if result else "failure")
         return result
@@ -86,33 +86,34 @@ class ESL():
         await self._write(command)
 
         self._log.debug("Expect api/response")
-        headers = await self._read_all_headers()
+        headers = await self._read_headers()
         body = await self._read_body(headers)
 
         if headers["Content-Type"] != 'api/response':
-            raise ESLProtocolError(f"Expected api response, "
-                                   f"but got {headers!r}")
+            raise ESLProtocolError("Expected api response, "
+                                   "but got %s" % (repr(headers),))
 
         return headers, body
 
     async def _write(self, command: str):
-        self._out.write(f'{command}\n\n'.encode())
+        self._out.write(b'%s\n\n' % command.encode())
         await self._out.drain()
 
     async def _read_headers(self):
+        headers = {}
+
         while True:
             line = await self._in.readline()
             if len(line) == 0 or line[-1:] != b"\n":
                 raise ESLHeaderError("Encountered EOF "
                                      "while reading response headers")
             if line == b"\n":
-                return
+                break
 
             name, value = line.decode().split(":", 1)
-            yield name.strip(), value.strip()
+            headers[name.strip()] = value.strip()
 
-    async def _read_all_headers(self) -> Dict[str, str]:
-        return {key: value async for key, value in self._read_headers()}
+        return headers
 
     async def _read_body(self, headers: Dict[str, str]) -> str:
         result = ""
